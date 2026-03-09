@@ -1,0 +1,23 @@
+[project]
+name = "gw-cli"
+version = "0.1.0"
+description = "Unified Google Workspace CLI for Claude Code"
+requires-python = ">=3.10"
+dependencies = [
+    "google-api-python-client>=2.100.0",
+    "google-auth>=2.23.0",
+    "google-auth-oauthlib>=1.1.0",
+    "click>=8.1.0",
+    "python-dateutil>=2.8.0",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+gw = "gw_cli.cli:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
