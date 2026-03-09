@@ -10,6 +10,16 @@ from googleapiclient.discovery import build
 
 DEFAULT_CREDENTIALS_DIR = Path.home() / ".google_workspace_mcp" / "credentials"
 
+DEFAULT_SCOPES = [
+    "https://www.googleapis.com/auth/gmail.modify",
+    "https://www.googleapis.com/auth/gmail.send",
+    "https://www.googleapis.com/auth/calendar",
+    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/documents",
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/presentations",
+]
+
 # API name -> (service_name, version)
 _SERVICES = {
     "drive": ("drive", "v3"),

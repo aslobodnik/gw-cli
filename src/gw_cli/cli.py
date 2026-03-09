@@ -4,7 +4,7 @@ import sys
 import click
 from googleapiclient.errors import HttpError
 
-from .auth import get_service, list_accounts, DEFAULT_CREDENTIALS_DIR
+from .auth import get_service, list_accounts, DEFAULT_CREDENTIALS_DIR, DEFAULT_SCOPES
 from .config import get_account, get_config, save_config, get_calendar_aliases
 from .services.drive import DriveClient
 from .services.docs import DocsClient
@@ -113,25 +113,45 @@ def auth_add(email, port):
             click.echo(f"Stale credentials for {email} — re-authenticating...")
             token_file.unlink()
 
-    # Borrow client_id/secret and scopes from any existing account
+    # Borrow client_id/secret from any existing account, or fall back to client_secrets.json
     existing = list(creds_dir.glob("*.json"))
-    if not existing:
-        click.echo("No existing accounts found. Need a client_secrets.json to bootstrap.")
-        return
-
-    with open(existing[0]) as f:
-        d = json.load(f)
+    if existing:
+        with open(existing[0]) as f:
+            d = json.load(f)
+        client_id = d["client_id"]
+        client_secret = d["client_secret"]
+        token_uri = d.get("token_uri", "https://oauth2.googleapis.com/token")
+        scopes = d.get("scopes", DEFAULT_SCOPES)
+    else:
+        # Bootstrap: look for client_secrets.json from Google Cloud Console
+        secrets_file = creds_dir / "client_secrets.json"
+        if not secrets_file.exists():
+            secrets_file = Path("client_secrets.json")
+        if not secrets_file.exists():
+            click.echo("No existing accounts found.")
+            click.echo("Download your OAuth client_secrets.json from Google Cloud Console")
+            click.echo("and place it in one of:")
+            click.echo(f"  {creds_dir / 'client_secrets.json'}")
+            click.echo(f"  ./client_secrets.json")
+            click.echo("See GOOGLE_SETUP.md for details.")
+            return
+        with open(secrets_file) as f:
+            secrets = json.load(f)
+        installed = secrets.get("installed", secrets.get("web", {}))
+        client_id = installed["client_id"]
+        client_secret = installed["client_secret"]
+        token_uri = installed.get("token_uri", "https://oauth2.googleapis.com/token")
+        scopes = DEFAULT_SCOPES
 
     client_config = {
         "installed": {
-            "client_id": d["client_id"],
-            "client_secret": d["client_secret"],
+            "client_id": client_id,
+            "client_secret": client_secret,
             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "token_uri": d.get("token_uri", "https://oauth2.googleapis.com/token"),
+            "token_uri": token_uri,
             "redirect_uris": ["http://localhost"],
         }
     }
-    scopes = d.get("scopes", [])
 
     click.echo(f"Opening browser for {email}...")
     click.echo(f"NOTE: {email} must be a test user in the Google Cloud Console OAuth consent screen.")

@@ -76,13 +76,21 @@ Your app is now "In production" but unverified. This means:
 
 **If you don't publish:** re-run `gw auth add` every 7 days when tokens expire.
 
-## Step 6: First Auth
+## Step 6: Download Client Secrets
+
+1. On the Credentials page, find your OAuth client ID
+2. Click the download icon (or "Download JSON")
+3. Save the file as `client_secrets.json` in one of:
+   - `~/.google_workspace_mcp/credentials/client_secrets.json`
+   - The `gw-cli` project root
+
+## Step 7: First Auth
 
 ```bash
 gw auth add you@gmail.com
 ```
 
-This opens a browser. You'll see the "unverified app" warning. Click through it:
+This reads your `client_secrets.json`, opens a browser, and starts the OAuth flow. You'll see the "unverified app" warning. Click through it:
 1. "Advanced"
 2. "Go to gw-cli (unsafe)"
 3. Grant all permissions
