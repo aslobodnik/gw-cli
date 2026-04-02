@@ -1,12 +1,12 @@
 # ~/.config/gw-cli/config.yaml
-default_account: alex@namestone.xyz
+default_account: you@gmail.com
 
 aliases:
-  work: alex@namestone.xyz
-  personal: alex@gmail.com
+  work: you@company.com
+  personal: you@gmail.com
 
 calendar_aliases:
-  work: alex@namestone.xyz
-  personal: alex@gmail.com
+  work: you@company.com
+  personal: you@gmail.com
 
 timezone: America/New_York

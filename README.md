@@ -99,35 +99,113 @@ Without a config, pass `-a` on every command.
 
 ### Usage
 
-```bash
-gw mail inbox                          # latest emails
-gw mail inbox --unread --days 3        # unread from last 3 days
-gw mail search "from:boss" --all       # search across all mail
-gw mail read <id>                      # read a message
-gw mail send to@x.com "Subj" "Body"   # send (agent asks before sending)
-gw mail reply <id> "Reply body"        # reply
-gw mail star/archive/trash <id>        # organize
+#### Authentication
 
-gw cal today                           # today's events
-gw cal week                            # this week
+```bash
+gw auth add you@gmail.com              # add account (opens browser)
+gw auth list                           # show linked accounts
+gw auth remove you@gmail.com           # remove account
+gw -a work mail inbox                  # use account alias
+```
+
+#### Gmail
+
+```bash
+gw mail inbox                          # latest 10 emails
+gw mail inbox --unread --days 3        # unread from last 3 days
+gw mail inbox --limit 25               # more results
+gw mail search "from:boss" --all       # search across all mail
+gw mail search "invoice" -A            # search all accounts
+gw mail read <id>                      # read a message
+gw mail read <id> --brief              # cleaned-up summary (strips tracking URLs)
+gw mail read <id> --peek               # read without marking as read
+gw mail read <id1> <id2> <id3>         # read multiple messages
+gw mail send to@x.com "Subj" "Body"   # send
+gw mail reply <id> "Reply body"        # reply
+gw mail download <id>                  # download attachments
+gw mail download <id> -d ~/Downloads   # download to specific folder
+gw mail star/unstar <id>               # star management
+gw mail archive <id>                   # remove from inbox
+gw mail trash <id>                     # move to trash
+gw mail mark-read <id>                 # mark as read
+gw mail mark-unread <id>              # mark as unread
+gw mail spam <id>                      # report as spam
+gw mail spam <id> --block              # report spam + block sender
+gw mail block <id>                     # block sender (auto-deletes future mail)
+gw mail labels                         # list custom labels
+gw mail label <id> "Work"             # add label to message
+gw mail unlabel <id> "Work"           # remove label
+gw mail accounts                       # list accounts & aliases
+```
+
+Mail config subcommands:
+
+```bash
+gw mail config set timezone US/Pacific
+gw mail config get default_account
+gw mail config alias work you@company.com
+```
+
+#### Calendar
+
+```bash
+gw cal today                           # today's events (all calendars)
+gw cal tomorrow                        # tomorrow's events
+gw cal week                            # next 7 days
+gw cal next                            # single upcoming event with countdown
 gw cal add "Meeting" "tomorrow 2pm"    # create event
 gw cal add "Lunch" "fri noon" -l "123 Main St" -i friend@gmail.com --meet
+gw cal add "Standup" "Mon 9am" -i a@x.com -i b@x.com
+gw cal delete <id>                     # delete event
 gw cal invites                         # pending invitations
-gw cal accept/decline <id>             # respond to invite
-
-gw drive ls                            # list files
-gw drive ls "quarterly report"         # search
-gw drive upload file.pdf               # upload
-gw drive download <id>                 # download
-gw drive share <id> user@x.com         # share
-
-gw doc create/read/append              # Google Docs
-gw sheet create/read/write             # Google Sheets
-gw slides create/read/add              # Google Slides
-
-gw -a other@gmail.com mail inbox       # switch accounts
-gw auth list                           # show linked accounts
+gw cal accept <id>                     # accept invite
+gw cal decline <id>                    # decline invite
+gw cal calendars                       # list accessible calendars
+gw cal --tz Asia/Kolkata today         # override timezone
 ```
+
+Time parsing supports natural language: `today 2pm`, `tomorrow 10:30am`, `Thu noon`, `next Monday`, `Feb 12 10:30am`, `2026-02-12 10:30am`. Add a range with a dash: `tomorrow 10:30am-1:30pm`.
+
+#### Drive
+
+```bash
+gw drive ls                            # list recent files
+gw drive ls "quarterly report"         # search
+gw drive ls -l 50                      # more results
+gw drive info <id>                     # detailed metadata & sharing info
+gw drive upload file.pdf               # upload
+gw drive upload file.pdf -f <folder>   # upload to folder
+gw drive download <id>                 # download
+gw drive download <id> -o ~/out.pdf    # download to path
+gw drive mkdir "Project Files"         # create folder
+gw drive mkdir "Sub" -p <parent_id>    # nested folder
+gw drive trash <id>                    # move to trash
+gw drive untrash <id>                  # restore from trash
+gw drive share <id> user@x.com         # share (reader by default)
+gw drive share <id> user@x.com -r writer  # share with write access
+gw drive unshare <id> user@x.com       # revoke access
+```
+
+#### Docs, Sheets, Slides
+
+```bash
+gw doc create "Meeting Notes"          # create Google Doc
+gw doc read <id>                       # read as plain text
+gw doc append <id> "New paragraph"     # append text
+
+gw sheet create "Budget"               # create Google Sheet
+gw sheet read <id>                     # read default sheet
+gw sheet read <id> "Sheet1!A1:C10"     # read specific range
+gw sheet write <id> "A1:B2" '[["a","b"],["c","d"]]'  # write cells
+
+gw slides create "Q1 Review"           # create presentation
+gw slides read <id>                    # read all slide text
+gw slides add <id> "Slide Title" "Body text"  # add slide
+```
+
+### Short IDs
+
+All commands accept short IDs (last 8-12 characters of the full ID). IDs from recent list/search results are cached for fast resolution.
 
 ## License
 
