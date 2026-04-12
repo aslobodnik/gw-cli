@@ -1,0 +1,4 @@
+#!/bin/bash
+# Backward-compat wrapper: gdrive -> gw drive
+source /Users/slobo/Documents/research/gw-cli/.venv/bin/activate
+gw drive "$@"

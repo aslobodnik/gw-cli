@@ -1,0 +1,4 @@
+#!/bin/bash
+# Backward-compat wrapper: email -> gw mail
+source /Users/slobo/Documents/research/gw-cli/.venv/bin/activate
+gw mail "$@"

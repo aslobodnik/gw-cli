@@ -15,7 +15,7 @@ from ..utils import _human_size
 _id_cache: dict[str, str] = {}
 
 # Max pages to scan in _resolve_message_id slow path (500 msgs/page).
-_RESOLVE_MAX_PAGES = 5
+_RESOLVE_MAX_PAGES = 50
 
 
 def format_date(timestamp_ms: str) -> str:
@@ -386,7 +386,7 @@ class GmailClient:
             if not page_token:
                 break
 
-        return msg_id
+        raise ValueError(f"could not resolve short ID '{msg_id}' to a full message ID")
 
     def search(self, query: str, limit: int = 10) -> str:
         """Search messages."""
@@ -487,8 +487,9 @@ class GmailClient:
         return f"Blocked {sender_email}. Future emails will skip inbox."
 
     def send(self, to: str, subject: str, body: str) -> str:
-        """Send an email."""
-        message = MIMEText(body)
+        """Send an email. Auto-detects HTML content."""
+        subtype = "html" if body.strip().startswith("<") else "plain"
+        message = MIMEText(body, subtype)
         message["to"] = to
         message["subject"] = subject
 
