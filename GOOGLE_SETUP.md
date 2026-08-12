@@ -1,6 +1,6 @@
 # Google OAuth Setup
 
-Google OAuth setup is cumbersome the first time. Budget 15-30 minutes.
+Google OAuth setup is cumbersome the first time. Budget 30 minutes if you've never done it.
 
 ## Step 1: Create a Google Cloud Project
 
