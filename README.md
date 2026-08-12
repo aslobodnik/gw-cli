@@ -14,7 +14,7 @@ cd gw-cli && python3 -m venv .venv && .venv/bin/pip install -e .
 # Add to PATH (the gw wrapper activates the venv automatically)
 echo 'export PATH="'"$(pwd)"':$PATH"' >> ~/.zshrc && source ~/.zshrc
 
-# Auth (one-time, opens browser -- see GOOGLE_SETUP.md first)
+# Auth (one-time, opens browser -- see GOOGLE_SETUP.md first, budget 15-30 min for Google Cloud setup)
 gw auth add you@gmail.com
 
 # Install the Claude Code skill
@@ -63,7 +63,7 @@ export PATH="$HOME/path/to/gw-cli:$PATH"
 
 ### Google OAuth credentials
 
-You need a Google Cloud project with OAuth 2.0 credentials. See **[GOOGLE_SETUP.md](GOOGLE_SETUP.md)** for the full walkthrough. Cumbersome the first time, straightforward after.
+You need a Google Cloud project with OAuth 2.0 credentials. See **[GOOGLE_SETUP.md](GOOGLE_SETUP.md)** for the full walkthrough. Cumbersome the first time (budget 15-30 minutes of Google Console clicking), straightforward after.
 
 Once you have your credentials, download the `client_secrets.json` from Google Cloud Console and place it in `~/.google_workspace_mcp/credentials/` or the project root.
 

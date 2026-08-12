@@ -427,15 +427,14 @@ def mail_read(ctx, msg_ids, peek, brief):
 @mail.command()
 @click.argument("query")
 @click.option("--limit", "-l", default=10, help="Number of results")
-@click.option("--all", "-a", "search_all", is_flag=True, help="Search all mail, not just inbox")
-@click.option("--all-accounts", "-A", is_flag=True, help="Search across all configured accounts")
+@click.option("--all", "-a", "search_all", is_flag=True, help="Cast wide net: search every configured account across all mail folders (not just inbox). Overrides top-level -a account scope.")
 @click.pass_context
-def search(ctx, query, limit, search_all, all_accounts):
-    """Search messages (Gmail syntax). Defaults to inbox only."""
+def search(ctx, query, limit, search_all):
+    """Search messages (Gmail syntax). Defaults to inbox on the current account; --all searches every account and every folder."""
     if not search_all and "in:" not in query.lower():
         query = f"in:inbox {query}"
 
-    if all_accounts:
+    if search_all:
         accounts = list_accounts()
         if not accounts:
             click.echo("No accounts configured.", err=True)
