@@ -530,19 +530,42 @@ def block(ctx, msg_id):
 @click.argument("to")
 @click.argument("subject")
 @click.argument("body")
+@click.option("--attach", multiple=True, type=click.Path(), help="File to attach (repeatable).")
 @click.pass_context
-def send(ctx, to, subject, body):
+def send(ctx, to, subject, body, attach):
     """Send an email."""
-    click.echo(_gmail_client(ctx).send(to, subject, body))
+    click.echo(_gmail_client(ctx).send(to, subject, body, list(attach)))
 
 
 @mail.command()
 @click.argument("msg_id")
 @click.argument("body")
+@click.option("--attach", multiple=True, type=click.Path(), help="File to attach (repeatable).")
 @click.pass_context
-def reply(ctx, msg_id, body):
+def reply(ctx, msg_id, body, attach):
     """Reply to a message."""
-    click.echo(_gmail_client(ctx).reply(msg_id, body))
+    click.echo(_gmail_client(ctx).reply(msg_id, body, list(attach)))
+
+
+@mail.command()
+@click.argument("to")
+@click.argument("subject")
+@click.argument("body")
+@click.option("--attach", multiple=True, type=click.Path(), help="File to attach (repeatable).")
+@click.pass_context
+def draft(ctx, to, subject, body, attach):
+    """Create a draft (saved to Drafts, not sent)."""
+    click.echo(_gmail_client(ctx).draft(to, subject, body, list(attach)))
+
+
+@mail.command("draft-reply")
+@click.argument("msg_id")
+@click.argument("body")
+@click.option("--attach", multiple=True, type=click.Path(), help="File to attach (repeatable).")
+@click.pass_context
+def draft_reply(ctx, msg_id, body, attach):
+    """Create a draft reply on a thread (saved to Drafts, not sent)."""
+    click.echo(_gmail_client(ctx).draft_reply(msg_id, body, list(attach)))
 
 
 @mail.command()

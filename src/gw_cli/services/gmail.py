@@ -5,6 +5,9 @@ import html as html_lib
 import os
 import re
 from email.mime.text import MIMEText
+from email.message import EmailMessage
+import mimetypes
+from pathlib import Path
 from datetime import datetime, timezone
 
 from ..utils import _human_size
@@ -486,57 +489,88 @@ class GmailClient:
         self._create_block_filter(sender_email)
         return f"Blocked {sender_email}. Future emails will skip inbox."
 
-    def send(self, to: str, subject: str, body: str) -> str:
-        """Send an email. Auto-detects HTML content."""
+    def _build_message(self, to, subject, body, attachments=None, cc=None,
+                       in_reply_to=None):
+        """Build a MIME message. Auto-detects HTML; attaches files if given."""
         subtype = "html" if body.strip().startswith("<") else "plain"
-        message = MIMEText(body, subtype)
-        message["to"] = to
-        message["subject"] = subject
+        msg = EmailMessage()
+        msg["to"] = to
+        if cc:
+            msg["cc"] = cc
+        msg["subject"] = subject
+        if in_reply_to:
+            msg["In-Reply-To"] = in_reply_to
+            msg["References"] = in_reply_to
+        msg.set_content(body, subtype=subtype)
+        for path in attachments or []:
+            p = Path(path).expanduser()
+            if not p.is_file():
+                raise FileNotFoundError(f"Attachment not found: {path}")
+            ctype, _ = mimetypes.guess_type(p.name)
+            maintype, sub = (ctype or "application/octet-stream").split("/", 1)
+            msg.add_attachment(p.read_bytes(), maintype=maintype, subtype=sub,
+                               filename=p.name)
+        return base64.urlsafe_b64encode(msg.as_bytes()).decode()
 
-        encoded = base64.urlsafe_b64encode(message.as_bytes()).decode()
-        result = self.service.users().messages().send(
-            userId="me",
-            body={"raw": encoded},
-        ).execute()
-
-        return f"Sent email to {to}. Message ID: {result['id'][-12:]}"
-
-    def reply(self, msg_id: str, body: str) -> str:
-        """Reply to a message."""
+    def _reply_context(self, msg_id: str) -> dict:
+        """Headers + thread needed to reply to a message."""
         full_id = self._resolve_message_id(msg_id)
-
         orig = self.service.users().messages().get(
             userId="me",
             id=full_id,
             format="metadata",
             metadataHeaders=["From", "Subject", "Message-ID"],
         ).execute()
-
         headers = orig.get("payload", {}).get("headers", [])
-        from_addr = get_header(headers, "From")
+        _, to_email = parse_email_address(get_header(headers, "From"))
         subject = get_header(headers, "Subject")
-        message_id = get_header(headers, "Message-ID")
-        thread_id = orig.get("threadId")
-
-        _, to_email = parse_email_address(from_addr)
-
         if not subject.lower().startswith("re:"):
             subject = f"Re: {subject}"
+        return {
+            "to": to_email,
+            "subject": subject,
+            "message_id": get_header(headers, "Message-ID"),
+            "thread_id": orig.get("threadId"),
+        }
 
-        message = MIMEText(body)
-        message["to"] = to_email
-        message["subject"] = subject
-        if message_id:
-            message["In-Reply-To"] = message_id
-            message["References"] = message_id
-
-        encoded = base64.urlsafe_b64encode(message.as_bytes()).decode()
+    def send(self, to: str, subject: str, body: str, attachments=None) -> str:
+        """Send an email. Auto-detects HTML content."""
+        raw = self._build_message(to, subject, body, attachments)
         result = self.service.users().messages().send(
-            userId="me",
-            body={"raw": encoded, "threadId": thread_id},
+            userId="me", body={"raw": raw},
         ).execute()
+        n = len(attachments or [])
+        suffix = f" ({n} attachment{'s' if n != 1 else ''})" if n else ""
+        return f"Sent email to {to}{suffix}. Message ID: {result['id'][-12:]}"
 
-        return f"Replied to {to_email}. Message ID: {result['id'][-12:]}"
+    def reply(self, msg_id: str, body: str, attachments=None) -> str:
+        """Reply to a message."""
+        c = self._reply_context(msg_id)
+        raw = self._build_message(c["to"], c["subject"], body, attachments,
+                                  in_reply_to=c["message_id"])
+        result = self.service.users().messages().send(
+            userId="me", body={"raw": raw, "threadId": c["thread_id"]},
+        ).execute()
+        return f"Replied to {c['to']}. Message ID: {result['id'][-12:]}"
+
+    def draft(self, to: str, subject: str, body: str, attachments=None) -> str:
+        """Create a draft (not sent)."""
+        raw = self._build_message(to, subject, body, attachments)
+        result = self.service.users().drafts().create(
+            userId="me", body={"message": {"raw": raw}},
+        ).execute()
+        return f"Draft created to {to}. Draft ID: {result['id']}"
+
+    def draft_reply(self, msg_id: str, body: str, attachments=None) -> str:
+        """Create a draft reply on a message's thread (not sent)."""
+        c = self._reply_context(msg_id)
+        raw = self._build_message(c["to"], c["subject"], body, attachments,
+                                  in_reply_to=c["message_id"])
+        result = self.service.users().drafts().create(
+            userId="me",
+            body={"message": {"raw": raw, "threadId": c["thread_id"]}},
+        ).execute()
+        return f"Draft reply to {c['to']} created. Draft ID: {result['id']}"
 
     def labels(self) -> str:
         """List all labels."""
