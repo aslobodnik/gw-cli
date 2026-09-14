@@ -690,6 +690,15 @@ def week(ctx):
     click.echo(_cal_client(ctx).week())
 
 
+@cal.command("list")
+@click.option("--days", "-d", default=30, show_default=True, help="Days ahead to list")
+@click.option("--query", "-q", default=None, help="Filter by title substring")
+@click.pass_context
+def cal_list(ctx, days, query):
+    """List events for the next N days (default 30)."""
+    click.echo(_cal_client(ctx).list_range(days=days, query=query))
+
+
 @cal.command("next")
 @click.pass_context
 def next_event(ctx):

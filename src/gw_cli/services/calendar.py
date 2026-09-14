@@ -354,8 +354,8 @@ class CalendarClient:
 
         return "\n".join(lines)
 
-    def format_week(self, events: list[dict]) -> str:
-        """Format events for week view."""
+    def format_week(self, events: list[dict], full_date: bool = False, title_width: int = 22) -> str:
+        """Format events for week view (full_date adds the month, for multi-week ranges)."""
         if not events:
             return "No events this week"
 
@@ -372,9 +372,9 @@ class CalendarClient:
             end_str = end.get("dateTime", end.get("date", ""))
 
             short_id = e.get("id", "")[-8:]
-            day = format_date(start_str)
+            day = start_str[:10] if full_date else format_date(start_str)
             time = format_time(start_str, end_str, tz_override=self.tz_override)
-            title = e.get("summary", "(no title)")[:22]
+            title = e.get("summary", "(no title)")[:title_width]
             where = get_location_short(e)
 
             lines.append(f"| {short_id} | {day} | {time} | {title} | {where} |")
@@ -401,6 +401,18 @@ class CalendarClient:
         end = start + timedelta(days=7)
         events = self.list_all_calendars(start=start, end=end)
         return self.format_week(events)
+
+    def list_range(self, days: int = 30, query: str | None = None) -> str:
+        """Get events for the next N days, optionally filtered by title substring."""
+        start = now().replace(hour=0, minute=0, second=0, microsecond=0)
+        end = start + timedelta(days=days)
+        events = self.list_all_calendars(start=start, end=end)
+        if query:
+            q = query.lower()
+            events = [e for e in events if q in (e.get("summary") or "").lower()]
+        if not events:
+            return f"No events in the next {days} days"
+        return self.format_week(events, full_date=days > 7, title_width=60)
 
     def next_event(self) -> str:
         """Get next upcoming event."""
