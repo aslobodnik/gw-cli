@@ -268,7 +268,12 @@ class CalendarClient:
         search_cals = [self._get_calendar_id(calendar_id)] if calendar_id else self._get_all_calendars()
         for cal_id in search_cals:
             try:
-                events = self.list_events(calendar_id=cal_id, max_results=100)
+                events = self.list_events(
+                    start=now() - timedelta(days=30),
+                    end=now() + timedelta(days=400),
+                    calendar_id=cal_id,
+                    max_results=2500,
+                )
                 for e in events:
                     if e.get("id", "").endswith(short_id):
                         return e["id"], cal_id
