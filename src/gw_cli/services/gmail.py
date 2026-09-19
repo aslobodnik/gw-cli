@@ -502,6 +502,15 @@ class GmailClient:
             msg["In-Reply-To"] = in_reply_to
             msg["References"] = in_reply_to
         msg.set_content(body, subtype=subtype)
+        if subtype == "plain":
+            # Gmail hard-wraps plain-text-only mail at ~72 cols on send;
+            # an HTML alternative keeps paragraphs fluid.
+            paras = re.split(r"\n\s*\n", body.strip())
+            html_body = "".join(
+                "<p>" + html_lib.escape(p).replace("\n", "<br>") + "</p>"
+                for p in paras
+            )
+            msg.add_alternative(html_body, subtype="html")
         for path in attachments or []:
             p = Path(path).expanduser()
             if not p.is_file():
