@@ -20,6 +20,14 @@ DEFAULT_SCOPES = [
     "https://www.googleapis.com/auth/presentations",
 ]
 
+# Opt-in scope groups, granted per account with `gw auth add EMAIL --with NAME`
+OPTIONAL_SCOPES = {
+    "search-console": [
+        "https://www.googleapis.com/auth/webmasters",
+        "https://www.googleapis.com/auth/siteverification",
+    ],
+}
+
 # API name -> (service_name, version)
 _SERVICES = {
     "drive": ("drive", "v3"),
@@ -28,6 +36,8 @@ _SERVICES = {
     "slides": ("slides", "v1"),
     "gmail": ("gmail", "v1"),
     "calendar": ("calendar", "v3"),
+    "searchconsole": ("searchconsole", "v1"),
+    "siteverification": ("siteVerification", "v1"),
 }
 
 

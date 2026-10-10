@@ -103,6 +103,7 @@ Without a config, pass `-a` on every command.
 
 ```bash
 gw auth add you@gmail.com              # add account (opens browser)
+gw auth add you@gmail.com --with search-console  # also grant Search Console + Site Verification
 gw auth list                           # show linked accounts
 gw auth remove you@gmail.com           # remove account
 gw -a work mail inbox                  # use account alias

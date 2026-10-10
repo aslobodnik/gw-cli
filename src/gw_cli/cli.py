@@ -4,7 +4,7 @@ import sys
 import click
 from googleapiclient.errors import HttpError
 
-from .auth import get_service, list_accounts, DEFAULT_CREDENTIALS_DIR, DEFAULT_SCOPES
+from .auth import get_service, list_accounts, DEFAULT_CREDENTIALS_DIR, DEFAULT_SCOPES, OPTIONAL_SCOPES
 from .config import get_account, get_config, save_config, get_calendar_aliases, get_calendar_accounts
 from .services.drive import DriveClient
 from .services.docs import DocsClient
@@ -103,7 +103,9 @@ def auth():
 @auth.command("add")
 @click.argument("email")
 @click.option("--port", "-p", default=0, help="Local server port for OAuth callback (0 = auto)")
-def auth_add(email, port):
+@click.option("--with", "extras", multiple=True, type=click.Choice(sorted(OPTIONAL_SCOPES)),
+              help="Also grant an optional scope group (repeatable)")
+def auth_add(email, port, extras):
     """Add a new Google account via OAuth (re-authenticates if token is stale)."""
     import json
     from google.auth.exceptions import RefreshError
@@ -113,6 +115,8 @@ def auth_add(email, port):
 
     creds_dir = DEFAULT_CREDENTIALS_DIR
     token_file = creds_dir / f"{email}.json"
+    wanted = [s for name in extras for s in OPTIONAL_SCOPES[name]]
+    base_scopes = None
 
     if token_file.exists():
         # Verify credentials actually work by forcing a refresh
@@ -120,8 +124,12 @@ def auth_add(email, port):
             creds = load_credentials(email)
             creds.refresh(Request())
             save_credentials(email, creds)
-            click.echo(f"Credentials for {email} are still valid.")
-            return
+            if set(wanted) <= set(creds.scopes or []):
+                click.echo(f"Credentials for {email} are still valid.")
+                return
+            # Valid but missing a requested group: keep what it has, add the rest
+            click.echo(f"Granting {', '.join(extras)} for {email}...")
+            base_scopes = list(creds.scopes or [])
         except (RefreshError, FileNotFoundError, Exception):
             click.echo(f"Stale credentials for {email} — re-authenticating...")
             token_file.unlink()
@@ -155,6 +163,12 @@ def auth_add(email, port):
         client_secret = installed["client_secret"]
         token_uri = installed.get("token_uri", "https://oauth2.googleapis.com/token")
         scopes = DEFAULT_SCOPES
+
+    # Optional groups never ride along on scopes borrowed from another account
+    if base_scopes is None:
+        optional = {s for group in OPTIONAL_SCOPES.values() for s in group}
+        base_scopes = [s for s in scopes if s not in optional]
+    scopes = base_scopes + [s for s in wanted if s not in base_scopes]
 
     client_config = {
         "installed": {
