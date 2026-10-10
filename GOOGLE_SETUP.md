@@ -24,6 +24,8 @@ Go to [APIs & Services > Library](https://console.cloud.google.com/apis/library)
 
 Click each one, click "Enable".
 
+Only if you'll use `gw auth add --with search-console`: also enable the Google Search Console API and the Site Verification API.
+
 ## Step 3: OAuth Consent Screen
 
 Go to [APIs & Services > OAuth consent screen](https://console.cloud.google.com/apis/credentials/consent).

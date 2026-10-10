@@ -92,6 +92,10 @@ calendar_aliases:
   work: you@company.com
   personal: you@gmail.com
 
+# Other authed accounts whose primary calendar is merged into `gw cal` (no sharing needed)
+calendar_accounts:
+  - you@company.com
+
 timezone: America/New_York
 ```
 
@@ -107,6 +111,22 @@ gw auth add you@gmail.com --with search-console  # also grant Search Console + S
 gw auth list                           # show linked accounts
 gw auth remove you@gmail.com           # remove account
 gw -a work mail inbox                  # use account alias
+```
+
+#### Optional scopes
+
+Default auth covers Gmail, Calendar, Drive, Docs, Sheets and Slides. Extra scope groups are opt-in per account with `--with` (repeatable):
+
+| Group | Grants | Enable in Google Cloud first |
+|---|---|---|
+| `search-console` | `webmasters`, `siteverification` | Google Search Console API, Site Verification API |
+
+Running `--with` on an account that's already authed re-opens consent and adds the group on top of its existing scopes. Groups never carry over to other accounts. There are no `gw` subcommands for these yet; call the APIs from Python:
+
+```python
+from gw_cli.auth import get_service
+sc = get_service("searchconsole", "you@gmail.com")
+sc.sites().list().execute()
 ```
 
 #### Gmail
@@ -164,6 +184,8 @@ gw cal decline <id>                    # decline invite
 gw cal calendars                       # list accessible calendars
 gw cal --tz Asia/Kolkata today         # override timezone
 ```
+
+Accounts listed under `calendar_accounts` in the config show up in the default views; `-a` limits to one account.
 
 Time parsing supports natural language: `today 2pm`, `tomorrow 10:30am`, `Thu noon`, `next Monday`, `Feb 12 10:30am`, `2026-02-12 10:30am`. Add a range with a dash: `tomorrow 10:30am-1:30pm`.
 
