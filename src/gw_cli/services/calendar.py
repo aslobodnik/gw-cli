@@ -217,10 +217,18 @@ def get_location_short(event: dict) -> str:
 class CalendarClient:
     """Google Calendar API wrapper."""
 
-    def __init__(self, service, account: str, tz_override: str | None = None):
+    def __init__(
+        self,
+        service,
+        account: str,
+        tz_override: str | None = None,
+        extra_clients: list["CalendarClient"] | None = None,
+    ):
         self.service = service
         self.account = account
         self.tz_override = tz_override
+        # Other accounts whose primary calendar is merged into this client's views
+        self.extra_clients = extra_clients or []
         self._event_cache: dict[str, tuple[str, str]] = {}
         self._calendars: list[str] | None = None
 
@@ -230,6 +238,13 @@ class CalendarClient:
             return self.account
         aliases = get_calendar_aliases()
         return aliases.get(alias, alias)
+
+    def _extra_for(self, calendar_id: str | None) -> "CalendarClient | None":
+        """Return the extra client that owns this calendar, if any."""
+        if not calendar_id:
+            return None
+        cal_id = self._get_calendar_id(calendar_id)
+        return next((x for x in self.extra_clients if x.account == cal_id), None)
 
     def _get_all_calendars(self) -> list[str]:
         """Get all accessible calendar IDs (cached)."""
@@ -244,9 +259,10 @@ class CalendarClient:
                 continue
             self._calendars.append(cal_id)
 
+        extra_accounts = {x.account for x in self.extra_clients}
         aliases = get_calendar_aliases()
         for cal_id in aliases.values():
-            if cal_id not in self._calendars:
+            if cal_id not in self._calendars and cal_id not in extra_accounts:
                 self._calendars.append(cal_id)
 
         return self._calendars
@@ -258,8 +274,8 @@ class CalendarClient:
         self._event_cache[short_id] = (full_id, calendar_id)
         return short_id
 
-    def _resolve_event_id(self, short_id: str, calendar_id: str | None = None) -> tuple[str, str]:
-        """Resolve short ID to full ID and calendar."""
+    def _find_event_id(self, short_id: str, calendar_id: str | None = None) -> tuple[str, str] | None:
+        """Look up a short ID in this account's calendars. None if not found."""
         if short_id in self._event_cache:
             cached_full, cached_cal = self._event_cache[short_id]
             return cached_full, calendar_id or cached_cal
@@ -280,7 +296,26 @@ class CalendarClient:
             except Exception:
                 continue  # skip inaccessible calendars, try next
 
-        return short_id, calendar_id or self.account
+        return None
+
+    def _resolve_event(self, short_id: str, calendar_id: str | None = None) -> tuple["CalendarClient", str, str]:
+        """Resolve short ID to the client that can act on it, full ID and calendar."""
+        extra = self._extra_for(calendar_id)
+        if extra:
+            found = extra._find_event_id(short_id, extra.account)
+            return extra, found[0] if found else short_id, extra.account
+
+        found = self._find_event_id(short_id, calendar_id)
+        if found:
+            return self, found[0], found[1]
+
+        if not calendar_id:
+            for x in self.extra_clients:
+                found = x._find_event_id(short_id, x.account)
+                if found:
+                    return x, found[0], found[1]
+
+        return self, short_id, self._get_calendar_id(calendar_id)
 
     def list_events(
         self,
@@ -318,6 +353,17 @@ class CalendarClient:
                 for e in events:
                     e["_calendar"] = cal_id
                     self._cache_event(e, cal_id)
+                all_events.extend(events)
+            except Exception:
+                pass
+
+        for x in self.extra_clients:
+            try:
+                events = x.list_events(start=start, end=end, calendar_id=x.account)
+                for e in events:
+                    e["_calendar"] = x.account
+                    e["_account"] = x.account
+                    x._cache_event(e, x.account)
                 all_events.extend(events)
             except Exception:
                 pass
@@ -466,6 +512,13 @@ class CalendarClient:
         attendees: list[str] | None = None,
     ) -> str:
         """Add a new event."""
+        extra = self._extra_for(calendar_id)
+        if extra:
+            return extra.add_event(
+                title, time_str, calendar_id=extra.account, add_meet=add_meet,
+                location=location, attendees=attendees,
+            )
+
         cal_id = self._get_calendar_id(calendar_id)
         start, end = parse_time(time_str)
         tz_name = get_timezone()
@@ -504,12 +557,12 @@ class CalendarClient:
 
     def delete_event(self, event_id: str, calendar_id: str | None = None) -> str:
         """Delete an event."""
-        full_id, cal_id = self._resolve_event_id(event_id, calendar_id)
+        client, full_id, cal_id = self._resolve_event(event_id, calendar_id)
 
-        event = self.service.events().get(calendarId=cal_id, eventId=full_id).execute()
+        event = client.service.events().get(calendarId=cal_id, eventId=full_id).execute()
         title = event.get("summary", "(no title)")
 
-        self.service.events().delete(calendarId=cal_id, eventId=full_id).execute()
+        client.service.events().delete(calendarId=cal_id, eventId=full_id).execute()
 
         return f"Deleted: {title}"
 
@@ -521,7 +574,7 @@ class CalendarClient:
         for e in events:
             attendees = e.get("attendees", [])
             for a in attendees:
-                if a.get("email") == self.account and a.get("responseStatus") == "needsAction":
+                if a.get("email") == e.get("_account", self.account) and a.get("responseStatus") == "needsAction":
                     organizer = e.get("organizer", {}).get("displayName") or e.get("organizer", {}).get("email", "")
                     pending.append({
                         "id": e.get("id"),
@@ -545,17 +598,17 @@ class CalendarClient:
 
     def respond_invite(self, event_id: str, response: str, calendar_id: str | None = None) -> str:
         """Accept or decline an invite."""
-        full_id, cal_id = self._resolve_event_id(event_id, calendar_id)
+        client, full_id, cal_id = self._resolve_event(event_id, calendar_id)
 
-        event = self.service.events().get(calendarId=cal_id, eventId=full_id).execute()
+        event = client.service.events().get(calendarId=cal_id, eventId=full_id).execute()
         title = event.get("summary", "(no title)")
         attendees = event.get("attendees", [])
 
         for a in attendees:
-            if a.get("email") == self.account:
+            if a.get("email") == client.account:
                 a["responseStatus"] = response
 
-        self.service.events().patch(
+        client.service.events().patch(
             calendarId=cal_id,
             eventId=full_id,
             body={"attendees": attendees},

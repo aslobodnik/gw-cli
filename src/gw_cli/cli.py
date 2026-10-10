@@ -5,7 +5,7 @@ import click
 from googleapiclient.errors import HttpError
 
 from .auth import get_service, list_accounts, DEFAULT_CREDENTIALS_DIR, DEFAULT_SCOPES
-from .config import get_account, get_config, save_config, get_calendar_aliases
+from .config import get_account, get_config, save_config, get_calendar_aliases, get_calendar_accounts
 from .services.drive import DriveClient
 from .services.docs import DocsClient
 from .services.sheets import SheetsClient
@@ -59,7 +59,20 @@ def _slides_client(ctx: click.Context) -> SlidesClient:
 
 def _cal_client(ctx: click.Context) -> CalendarClient:
     tz_override = ctx.obj.get("tz_override") if ctx.obj else None
-    return CalendarClient(_svc(ctx, "calendar"), _account(ctx), tz_override=tz_override)
+    account = _account(ctx)
+
+    # Merge extra accounts only in the default view; -a means just that account
+    extras = []
+    if not ctx.obj.get("account"):
+        for extra in get_calendar_accounts():
+            if extra == account:
+                continue
+            try:
+                extras.append(CalendarClient(get_service("calendar", extra), extra, tz_override=tz_override))
+            except Exception as e:
+                click.echo(f"Warning: skipping calendar account {extra}: {e}", err=True)
+
+    return CalendarClient(_svc(ctx, "calendar"), account, tz_override=tz_override, extra_clients=extras)
 
 
 def _gmail_client(ctx: click.Context) -> GmailClient:
@@ -742,7 +755,7 @@ def calendars(ctx):
     """List accessible calendars."""
     aliases = get_calendar_aliases()
     client = _cal_client(ctx)
-    cals = client._get_all_calendars()
+    cals = client._get_all_calendars() + [x.account for x in client.extra_clients]
     click.echo("Accessible calendars:")
     for c in cals:
         alias = next((k for k, v in aliases.items() if v == c), None)

@@ -9,4 +9,8 @@ calendar_aliases:
   work: you@company.com
   personal: you@gmail.com
 
+# Other authed accounts whose primary calendar is merged into `gw cal` (no sharing needed)
+calendar_accounts:
+  - you@company.com
+
 timezone: America/New_York

@@ -56,6 +56,12 @@ def get_calendar_aliases() -> dict[str, str]:
     return config.get("calendar_aliases", DEFAULT_CALENDAR_ALIASES)
 
 
+def get_calendar_accounts() -> list[str]:
+    """Get extra accounts whose primary calendar is merged into the default view."""
+    config = get_config()
+    return config.get("calendar_accounts") or []
+
+
 def get_timezone() -> str:
     """Get timezone from config, falling back to default."""
     config = get_config()
