@@ -504,12 +504,14 @@ class GmailClient:
         msg.set_content(body, subtype=subtype)
         if subtype == "plain":
             # Gmail hard-wraps plain-text-only mail at ~72 cols on send;
-            # an HTML alternative keeps paragraphs fluid.
-            paras = re.split(r"\n\s*\n", body.strip())
-            html_body = "".join(
-                "<p>" + html_lib.escape(p).replace("\n", "<br>") + "</p>"
-                for p in paras
-            )
+            # an HTML alternative keeps paragraphs fluid. Gmail-native markup
+            # (one <div> per line, <div><br></div> per blank line); <p> margins
+            # push the first line down in the compose window.
+            html_body = '<div dir="ltr">' + "".join(
+                f"<div>{html_lib.escape(line)}</div>" if line.strip()
+                else "<div><br></div>"
+                for line in body.strip().split("\n")
+            ) + "</div>"
             msg.add_alternative(html_body, subtype="html")
         for path in attachments or []:
             p = Path(path).expanduser()
