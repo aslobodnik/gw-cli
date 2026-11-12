@@ -120,6 +120,7 @@ Default auth covers Gmail, Calendar, Drive, Docs, Sheets and Slides. Extra scope
 | Group | Grants | Enable in Google Cloud first |
 |---|---|---|
 | `search-console` | `webmasters`, `siteverification` | Google Search Console API, Site Verification API |
+| `analytics` | `analytics.edit`, `analytics.readonly` | Google Analytics Admin API, Analytics Data API |
 
 Running `--with` on an account that's already authed re-opens consent and adds the group on top of its existing scopes. Groups never carry over to other accounts. There are no `gw` subcommands for these yet; call the APIs from Python:
 

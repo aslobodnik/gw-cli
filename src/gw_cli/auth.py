@@ -26,6 +26,10 @@ OPTIONAL_SCOPES = {
         "https://www.googleapis.com/auth/webmasters",
         "https://www.googleapis.com/auth/siteverification",
     ],
+    "analytics": [
+        "https://www.googleapis.com/auth/analytics.edit",
+        "https://www.googleapis.com/auth/analytics.readonly",
+    ],
 }
 
 # API name -> (service_name, version)
@@ -38,6 +42,8 @@ _SERVICES = {
     "calendar": ("calendar", "v3"),
     "searchconsole": ("searchconsole", "v1"),
     "siteverification": ("siteVerification", "v1"),
+    "analyticsadmin": ("analyticsadmin", "v1beta"),
+    "analyticsdata": ("analyticsdata", "v1beta"),
 }
 
 
